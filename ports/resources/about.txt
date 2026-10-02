@@ -1,0 +1,3 @@
+Meet Karbs, your personal assistant.
+Published by Dwij Kansagara. MIT source attribution is in the repository LICENSE.
+This is the macOS, Linux and Android preview. Platform capabilities differ from the stable Windows release.

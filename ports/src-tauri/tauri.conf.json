@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Karbs Preview",
+  "version": "0.3.0",
+  "identifier": "com.dwijkansagara.karbs.portable",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1430",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Karbs",
+        "width": 1000,
+        "height": 730,
+        "minWidth": 360,
+        "minHeight": 500,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png"
+    ],
+    "resources": [
+      "../resources/about.txt"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Codex and Gemini chat for desktop, Gemini chat for Android",
+    "copyright": "Karbs modifications © 2026 Dwij Kansagara; MIT source attribution retained"
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/DwijKansagara/Karbs/releases/download/ports-preview/latest-ports.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDAxMEFDMTMxRDIyMTJCQ0UKUldUT0t5SFNNY0VLQVdFbW4zVkFxV0ZWa2F3VHMvbGRLd3lPaWV6VDIwcFc0WkN2TmVNQm42aTgK"
+    }
+  }
+}

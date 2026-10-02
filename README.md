@@ -6,6 +6,8 @@ Karbs brings Codex and Gemini chat, session activity, file attachments and optio
 
 **Release status:** Windows x64 is the implemented release target. macOS, Linux, Android and iOS installers are not available. This repository does not claim those platforms work.
 
+macOS, Linux and Android preview development is in [ports/](ports/README.md). Those ports have different capabilities and must pass native build checks before download links are offered.
+
 - Website: https://karbs.antideploy.app
 - Publisher: Dwij Kansagara
 - Support: kansagara.dwij@gmail.com

@@ -7,6 +7,8 @@ windows/src-tauri/gen/
 *.tsbuildinfo
 *.key
 *.pem
+*.jks
+*.keystore
 .env*
 !.env.example
 .antideploy.json

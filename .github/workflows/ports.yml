@@ -136,7 +136,7 @@ jobs:
         id: android-apk
         with:
           path: ports/artifacts/Karbs_0.3.0_android.apk
-          key: signed-android-v1-${{ hashFiles('ports/core/**', 'ports/src/**', 'ports/android/**', 'ports/src-tauri/src/**', 'ports/src-tauri/Cargo*', 'ports/src-tauri/*.json', 'ports/package*.json', 'ports/index.html', 'ports/vite.config.*', 'ports/scripts/configure-android.mjs', 'ports/scripts/collect-artifacts.mjs', '.github/workflows/ports.yml') }}
+          key: signed-android-v1-${{ hashFiles('ports/core/**', 'ports/src/**', 'ports/android/**', 'ports/src-tauri/**', 'ports/Cargo*', 'ports/*.json', 'ports/index.html', 'ports/vite.config.*', 'ports/scripts/configure-android.mjs', 'ports/scripts/collect-artifacts.mjs', '.github/workflows/ports.yml') }}
       - run: npm run tauri -- android init --ci --skip-targets-install
         if: steps.android-apk.outputs.cache-hit != 'true'
       - run: node scripts/configure-android.mjs

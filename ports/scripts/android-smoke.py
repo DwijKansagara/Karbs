@@ -11,7 +11,7 @@ def tree():
  # The Android dump command can return exit code zero with a null root.
  # Remove the last snapshot so Activity restarts cannot reuse stale controls.
  adb('shell','rm','-f','/sdcard/karbs-smoke.xml')
- result=adb('shell','uiautomator','dump','/sdcard/karbs-smoke.xml')
+ result=adb('shell','uiautomator','dump','--windows','/sdcard/karbs-smoke.xml')
  if 'dumped' not in result.lower():raise subprocess.CalledProcessError(1,'uiautomator dump')
  return ET.fromstring(adb('shell','cat','/sdcard/karbs-smoke.xml'))
 def failure(kind,error,trace):
@@ -76,6 +76,7 @@ tap(text('Show floating bar'));adb('shell','input','keyevent','3')
 tap(text('Floating Karbs'));text('Open Karbs');text('Stop phone actions')
 subprocess.check_call(['adb','shell','screencap','-p','/sdcard/karbs-floating.png']);subprocess.check_call(['adb','pull','/sdcard/karbs-floating.png','ports/artifacts/android-floating-smoke.png'])
 tap(text('Open Karbs'));text('Settings');tap(text('Hide'))
+print('PASS: floating bar over launcher, expand/open/hide',flush=True)
 adb('shell','settings','put','secure','enabled_accessibility_services',PACKAGE+'/'+PACKAGE+'.KarbsAccessibilityService')
 adb('shell','settings','put','secure','accessibility_enabled','1');time.sleep(3)
 for _ in range(4):scroll(False)

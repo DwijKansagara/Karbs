@@ -11,7 +11,7 @@ use tokio::io::{AsyncBufReadExt,BufReader};
 #[derive(Clone,Serialize,Deserialize)]
 #[serde(rename_all="camelCase",default)]
 pub struct Preferences{provider:String,gemini_model:String,codex_model:String,full_access:bool,phone_access:bool,speak_replies:bool}
-impl Default for Preferences{fn default()->Self{Self{provider:"gemini".into(),gemini_model:"gemini-2.5-flash".into(),codex_model:String::new(),full_access:false,phone_access:false,speak_replies:false}}}
+impl Default for Preferences{fn default()->Self{Self{provider:"gemini".into(),gemini_model:"gemini-3.8-flash".into(),codex_model:String::new(),full_access:false,phone_access:false,speak_replies:false}}}
 pub struct Shared{preferences:Mutex<Preferences>,conversation:tokio::sync::Mutex<Conversation>,cancel:tokio::sync::Notify,key:Mutex<String>,login:AtomicBool,speech:Mutex<Option<std::process::Child>>,data:PathBuf}
 fn data(app:&AppHandle)->Result<PathBuf,String>{std::env::var_os("KARBS_PORT_DATA").map(PathBuf::from).map(Ok).unwrap_or_else(||app.path().app_data_dir().map_err(|_|"Cannot locate app storage.".into()))}
 fn codex_path(app:&AppHandle)->Result<PathBuf,String>{

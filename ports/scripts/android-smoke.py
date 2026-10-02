@@ -53,6 +53,16 @@ def node(predicate,timeout=30):
 def text(value):
  try:return node(lambda a:value.lower() in (a.get('text','')+' '+a.get('content-desc','')).lower())
  except AssertionError:raise AssertionError('Expected UI text: '+value)from None
+def seen(value,timeout=30):
+ # Status assertions do not require a clickable, onscreen target. The normal
+ # WebView tree retains status nodes when the settings panel is scrolled.
+ end=time.monotonic()+timeout
+ while time.monotonic()<end:
+  try:
+   if any(value.lower() in (n.get('text','')+' '+n.get('content-desc','')).lower() for n in tree().iter('node')):return
+  except (subprocess.CalledProcessError,ET.ParseError):pass
+  time.sleep(1)
+ raise AssertionError('Expected Karbs status: '+value)
 def tap(a):
  x1,y1,x2,y2=map(int,re.findall(r'\d+',a['bounds']));adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2))
 adb('install','-r','ports/artifacts/Karbs_0.3.0_android.apk')
@@ -66,10 +76,10 @@ adb('shell','input','text','karbs-emulator-fixture-not-a-real-api-key')
 ime=adb('shell','dumpsys','input_method')
 if re.search(r'(?:mInputShown|isInputViewShown)\s*=\s*true',ime):
  adb('shell','input','keyevent','4');time.sleep(1)
-tap(text('Save key securely'));text('Key saved in secure device storage')
+tap(text('Save key securely'));seen('Key saved in secure device storage')
 print('PASS: encrypted key saved',flush=True)
 adb('shell','am','force-stop',PACKAGE);adb('shell','am','start','-n',PACKAGE+'/.MainActivity')
-tap(text('Settings'));text('Gemini key connected');tap(text('Remove key'));text('No Gemini key saved')
+tap(text('Settings'));seen('Gemini key connected');tap(text('Remove key'));seen('No Gemini key saved')
 print('PASS: encrypted key reloaded and removed',flush=True)
 adb('shell','appops','set',PACKAGE,'SYSTEM_ALERT_WINDOW','allow')
 adb('shell','pm','grant',PACKAGE,'android.permission.POST_NOTIFICATIONS')

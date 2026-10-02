@@ -25,16 +25,18 @@ class KarbsAccessibilityService : AccessibilityService() {
         check(taskActive) { "Phone control is not enabled for an active task." }; clearNodes()
         val root = rootInActiveWindow ?: error("This app does not expose an accessible screen.")
         val items = JSONArray(); var visited = 0
-        fun visit(node: AccessibilityNodeInfo, depth: Int) {
+        val windowBounds = Rect(); root.getBoundsInScreen(windowBounds)
+        fun visit(node: AccessibilityNodeInfo, depth: Int, clip: Rect) {
             if (++visited > 250 || depth > 25 || !node.isVisibleToUser || node.isPassword) return
-            val bounds = Rect(); node.getBoundsInScreen(bounds); if (bounds.isEmpty) return
+            val bounds = Rect(); node.getBoundsInScreen(bounds); if (bounds.isEmpty || !bounds.intersect(clip)) return
             val id = ++sequence
             nodes[id] = AccessibilityNodeInfo.obtain(node)
             items.put(JSONObject().put("id", id).put("text", node.text?.toString()?.take(300) ?: "").put("label", node.contentDescription?.toString()?.take(300) ?: "")
                 .put("clickable", node.isClickable).put("editable", node.isEditable).put("bounds", JSONArray(listOf(bounds.left,bounds.top,bounds.right,bounds.bottom))))
-            for (i in 0 until node.childCount) node.getChild(i)?.let { child -> try { visit(child, depth + 1) } finally { child.recycle() } }
+            val childClip = if (node.isScrollable) bounds else clip
+            for (i in 0 until node.childCount) node.getChild(i)?.let { child -> try { visit(child, depth + 1, childClip) } finally { child.recycle() } }
         }
-        try { visit(root, 0); return JSONObject().put("package", root.packageName?.toString()).put("nodes", items) } finally { root.recycle() }
+        try { visit(root, 0, windowBounds); return JSONObject().put("package", root.packageName?.toString()).put("nodes", items) } finally { root.recycle() }
     }
     fun nodeAction(id: Int, text: String?): Boolean {
         check(taskActive) { "Phone task stopped." }

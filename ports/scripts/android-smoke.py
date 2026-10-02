@@ -28,8 +28,17 @@ def node(predicate,timeout=30):
  while time.monotonic()<end:
   try:root=tree()
   except (subprocess.CalledProcessError,ET.ParseError):time.sleep(1);continue
+  parents={child:parent for parent in root.iter() for child in parent}
   for n in root.iter('node'):
-   if visible(n.attrib) and predicate(n.attrib):return n.attrib
+   if not visible(n.attrib) or not predicate(n.attrib):continue
+   bounds=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));x=(bounds[0]+bounds[2])/2;y=(bounds[1]+bounds[3])/2
+   parent=parents.get(n);clipped=False
+   while parent is not None:
+    if parent.attrib.get('scrollable')=='true':
+     clip=list(map(int,re.findall(r'\d+',parent.attrib.get('bounds',''))))
+     if len(clip)!=4 or not(clip[0]<=x<clip[2] and clip[1]<=y<clip[3]):clipped=True;break
+    parent=parents.get(parent)
+   if not clipped:return n.attrib
   scroll()
   time.sleep(1)
  raise AssertionError('Expected Karbs UI element was not found.')
@@ -50,8 +59,10 @@ ime=adb('shell','dumpsys','input_method')
 if re.search(r'(?:mInputShown|isInputViewShown)\s*=\s*true',ime):
  adb('shell','input','keyevent','4');time.sleep(1)
 tap(text('Save key securely'));text('Key saved in secure device storage')
+print('PASS: encrypted key saved',flush=True)
 adb('shell','am','force-stop',PACKAGE);adb('shell','am','start','-n',PACKAGE+'/.MainActivity')
 tap(text('Settings'));text('Gemini key connected');tap(text('Remove key'));text('No Gemini key saved')
+print('PASS: encrypted key reloaded and removed',flush=True)
 adb('shell','appops','set',PACKAGE,'SYSTEM_ALERT_WINDOW','allow')
 adb('shell','pm','grant',PACKAGE,'android.permission.POST_NOTIFICATIONS')
 for _ in range(4):scroll(False)

@@ -120,6 +120,19 @@ jobs:
       - run: node scripts/collect-artifacts.mjs android universal
       - name: Verify Android publisher signature
         run: "$ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose artifacts/Karbs_0.3.0_android.apk"
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android startup and encrypted-key smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: python3 ports/scripts/android-smoke.py
       - uses: actions/upload-artifact@v4
         with:
           name: Karbs-Android

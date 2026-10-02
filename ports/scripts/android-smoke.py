@@ -1,10 +1,19 @@
 """Exercise a real emulator with a clearly fake key, never a provider credential."""
-import subprocess,time,xml.etree.ElementTree as ET,re
+import subprocess,time,xml.etree.ElementTree as ET,re,sys,pathlib
 PACKAGE='com.dwijkansagara.karbs.portable'
 def adb(*args):return subprocess.check_output(['adb',*args],text=True).strip()
 def tree():
  adb('shell','uiautomator','dump','/sdcard/karbs-smoke.xml')
  return ET.fromstring(adb('shell','cat','/sdcard/karbs-smoke.xml'))
+def failure(kind,error,trace):
+ try:
+  path=pathlib.Path('ports/qa/android-ci');path.mkdir(parents=True,exist_ok=True)
+  path.joinpath('screen.xml').write_text(ET.tostring(tree(),encoding='unicode'))
+  adb('shell','screencap','-p','/sdcard/karbs-failure.png');subprocess.check_call(['adb','pull','/sdcard/karbs-failure.png',str(path/'screen.png')])
+  path.joinpath('device.log').write_text(adb('logcat','-d','-s','AndroidRuntime:E','RustStdoutStderr:V','chromium:E'))
+ except Exception:pass
+ sys.__excepthook__(kind,error,trace)
+sys.excepthook=failure
 def node(predicate,timeout=30):
  end=time.monotonic()+timeout
  while time.monotonic()<end:
@@ -13,7 +22,9 @@ def node(predicate,timeout=30):
   adb('shell','input','swipe','300','650','300','300','250')
   time.sleep(1)
  raise AssertionError('Expected Karbs UI element was not found.')
-def text(value):return node(lambda a:value.lower() in (a.get('text','')+' '+a.get('content-desc','')).lower())
+def text(value):
+ try:return node(lambda a:value.lower() in (a.get('text','')+' '+a.get('content-desc','')).lower())
+ except AssertionError:raise AssertionError('Expected UI text: '+value)from None
 def tap(a):
  x1,y1,x2,y2=map(int,re.findall(r'\d+',a['bounds']));adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2))
 adb('install','-r','ports/artifacts/Karbs_0.3.0_android.apk')
@@ -21,7 +32,8 @@ adb('shell','am','start','-n',PACKAGE+'/.MainActivity')
 text('Settings');assert adb('shell','pidof',PACKAGE)
 tap(text('Settings'));tap(node(lambda a:a.get('password')=='true'))
 adb('shell','input','text','karbs-emulator-fixture-not-a-real-api-key')
-adb('shell','input','keyevent','4');tap(text('Save key securely'));text('Key saved in secure device storage')
+if any('inputmethod' in n.attrib.get('package','') for n in tree().iter('node')):adb('shell','input','keyevent','4')
+tap(text('Save key securely'));text('Key saved in secure device storage')
 adb('shell','am','force-stop',PACKAGE);adb('shell','am','start','-n',PACKAGE+'/.MainActivity')
 tap(text('Settings'));text('Gemini key connected');tap(text('Remove key'));text('No Gemini key saved')
 adb('shell','appops','set',PACKAGE,'SYSTEM_ALERT_WINDOW','allow')

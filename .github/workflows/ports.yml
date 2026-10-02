@@ -1,7 +1,7 @@
 name: macOS Linux Android previews
 on:
   push:
-    branches: [codex/platform-ports]
+    branches: [main, codex/platform-ports]
     paths: ['ports/**', '.github/workflows/ports.yml']
   workflow_dispatch:
 permissions:
@@ -61,6 +61,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           mkdir -p "$RUNNER_TEMP/karbs-smoke"
+          DEB=$(find target/release/bundle/deb -name '*.deb' -print -quit)
+          dpkg-deb --extract "$DEB" "$RUNNER_TEMP/karbs-package"
+          CODEX=$(find "$RUNNER_TEMP/karbs-package" -type f -path '*/codex/codex' -print -quit)
+          test -s "$(dirname "$CODEX")/CODEX-NOTICE"
+          test -s "$(dirname "$CODEX")/RATATUI-LICENSE"
+          [[ "$("$CODEX" --version)" == *0.160.0* ]]
           timeout 15s xvfb-run -a env KARBS_PORT_DATA="$RUNNER_TEMP/karbs-smoke" WEBKIT_DISABLE_DMABUF_RENDERER=1 target/release/karbs-port > "$RUNNER_TEMP/karbs-smoke.log" 2>&1 &
           PID=$!
           sleep 6
@@ -71,6 +77,9 @@ jobs:
         run: |
           APP=$(find target/release/bundle/macos -maxdepth 1 -name '*.app' -print -quit)
           codesign --verify --deep --strict "$APP"
+          test -s "$APP/Contents/Resources/codex/CODEX-NOTICE"
+          test -s "$APP/Contents/Resources/codex/RATATUI-LICENSE"
+          [[ "$("$APP/Contents/Resources/codex/codex" --version)" == *0.160.0* ]]
           mkdir -p "$RUNNER_TEMP/karbs-smoke"
           KARBS_PORT_DATA="$RUNNER_TEMP/karbs-smoke" "$APP/Contents/MacOS/karbs-port" > "$RUNNER_TEMP/karbs-smoke.log" 2>&1 &
           PID=$!
@@ -138,6 +147,14 @@ jobs:
           target: google_apis
           disable-animations: true
           script: python3 ports/scripts/android-smoke.py
+      - name: Android failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Karbs-Android-diagnostics
+          path: ports/qa/android-ci/*
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: Karbs-Android

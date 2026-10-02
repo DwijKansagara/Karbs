@@ -1,0 +1,7 @@
+faster-whisper==1.2.1
+sounddevice==0.5.6
+edge-tts==7.2.8
+av==16.1.0
+pypdf==6.19.0
+pypdfium2==5.13.0
+pillow==12.3.0

@@ -1,0 +1,27 @@
+name: Windows checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    env:
+      COUCOU_DATA_DIR: ${{ github.workspace }}/test-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm run build
+      - run: node --test tests/agents.test.mjs ../runtime/pc-control/server.test.mjs ../runtime/pc-control/gemini-agent.test.mjs
+      - run: cargo test --lib -p coucou

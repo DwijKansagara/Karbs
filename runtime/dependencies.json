@@ -1,0 +1,6 @@
+{
+  "node": {"file":"node-v22.23.3-win-x64.zip","url":"https://nodejs.org/dist/v22.23.3/node-v22.23.3-win-x64.zip","sha256":"2b0ff57b049cda1bbcea2240eec20467018713c1efe1f7360c2681859b90ed71"},
+  "python": {"file":"python-3.12.10-embed-amd64.zip","url":"https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip","sha256":"4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3"},
+  "pip": {"url":"https://bootstrap.pypa.io/get-pip.py","sha256":"fb24e693bab954209a063d90953621412ccad4a500905a726286e038f508ddf6"},
+  "codexVersion":"0.160.0"
+}

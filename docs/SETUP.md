@@ -23,4 +23,6 @@ To float Karbs, choose **Allow floating bar**, grant Android Display over other 
 
 For phone tasks, choose **Set up Android Accessibility**, enable **Karbs Phone Assist**, return to Karbs and enable **Allow Phone Assist for tasks I send**. Use **Test Phone Assist** first. It checks its own text field/button, Home navigation and screen inspection, without sending screen contents to Gemini. Then send a small task such as opening your browser to a requested URL. Phone Assist screen text is sent to your Gemini API account during an enabled task. It cannot access private app files or bypass protected screens. Disable the task setting or the Android Accessibility service to revoke it.
 
+If Android reports a restricted setting for this downloaded APK, follow [Android's restricted settings guide](https://support.google.com/android/answer/12623953): open Settings, Apps, Karbs, the More menu, then Allow restricted settings if your device provides it. Return to Accessibility to enable Karbs Phone Assist. Karbs cannot grant these permissions itself; phone manufacturers may present different controls.
+
 Desktop previews check their separate signed update channel. Android updates use a newer APK signed by the same publisher key and still require Android installation approval. Source commits alone are not application updates.

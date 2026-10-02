@@ -81,6 +81,9 @@ adb('shell','settings','put','secure','enabled_accessibility_services',PACKAGE+'
 adb('shell','settings','put','secure','accessibility_enabled','1');time.sleep(3)
 for _ in range(4):scroll(False)
 if not any('Connections' in n.attrib.get('text','') for n in tree().iter('node')):tap(text('Settings'))
-tap(text('Allow Phone Assist for tasks I send'));text('Phone Assist: screen actions')
-tap(text('Test Phone Assist'));text('Phone Assist test passed')
+control=text('Allow Phone Assist for tasks I send');time.sleep(1);tap(control);text('Phone Assist: screen actions')
+control=text('Test Phone Assist');time.sleep(1);tap(control)
+# The shell dump tool temporarily suppresses other Accessibility services.
+# Leave Karbs's own service uninterrupted while its real action probe runs.
+time.sleep(5);text('Phone Assist test passed')
 print('PASS: signed Android app launches; encrypted key save/load/remove; floating bar over launcher, expand/open/hide; opt-in Phone Assist connection, native text entry/click/Home/screen inspection. No live Gemini or physical device was tested.')

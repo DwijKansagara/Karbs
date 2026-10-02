@@ -2,6 +2,9 @@ package com.dwijkansagara.karbs.portable
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.speech.tts.TextToSpeech
@@ -25,8 +28,17 @@ import java.util.Locale
 @Keep @InvokeArg class KeyArgs { var value: String = "" }
 @Keep @InvokeArg class SpeechArgs { var text: String = "" }
 @Keep @InvokeArg class FileArgs { var path: String = "" }
+@Keep @InvokeArg class OverlayArgs { var text: String = "Karbs · Ready"; var working: Boolean = false }
 @Keep @TauriPlugin
 class KarbsPlatformPlugin(private val activity: Activity): Plugin(activity) {
+    @Command fun overlayStatus(invoke: Invoke) { val result = JSObject(); result.put("allowed", Settings.canDrawOverlays(activity)); result.put("running", KarbsOverlayService.instance != null); invoke.resolve(result) }
+    @Command fun overlayPermission(invoke: Invoke) { activity.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + activity.packageName))); invoke.resolve(JSObject()) }
+    @Command fun showOverlay(invoke: Invoke) {
+        if (!Settings.canDrawOverlays(activity)) { invoke.reject("Allow Display over other apps in Android settings first."); return }
+        activity.runOnUiThread { try { val intent = Intent(activity, KarbsOverlayService::class.java); if (Build.VERSION.SDK_INT >= 26) activity.startForegroundService(intent) else activity.startService(intent); invoke.resolve(JSObject()) } catch (_: Exception) { invoke.reject("Android could not start the floating bar. Reopen Karbs and try again.") } }
+    }
+    @Command fun hideOverlay(invoke: Invoke) { activity.stopService(Intent(activity, KarbsOverlayService::class.java)); invoke.resolve(JSObject()) }
+    @Command fun updateOverlay(invoke: Invoke) { val args = invoke.parseArgs(OverlayArgs::class.java); activity.runOnUiThread { KarbsOverlayService.instance?.updateStatus(args.text, args.working); invoke.resolve(JSObject()) } }
     private val preferences = activity.getSharedPreferences("karbs-secure", Context.MODE_PRIVATE)
     private val alias = "karbs-gemini-key"
     private var ready = false

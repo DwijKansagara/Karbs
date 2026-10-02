@@ -12,7 +12,7 @@ use tokio::io::{AsyncBufReadExt,BufReader};
 #[serde(rename_all="camelCase",default)]
 pub struct Preferences{provider:String,gemini_model:String,codex_model:String,full_access:bool,speak_replies:bool}
 impl Default for Preferences{fn default()->Self{Self{provider:"gemini".into(),gemini_model:"gemini-2.5-flash".into(),codex_model:String::new(),full_access:false,speak_replies:false}}}
-pub struct Shared{preferences:Mutex<Preferences>,conversation:tokio::sync::Mutex<Conversation>,key:Mutex<String>,login:AtomicBool,speech:Mutex<Option<std::process::Child>>,data:PathBuf}
+pub struct Shared{preferences:Mutex<Preferences>,conversation:tokio::sync::Mutex<Conversation>,cancel:tokio::sync::Notify,key:Mutex<String>,login:AtomicBool,speech:Mutex<Option<std::process::Child>>,data:PathBuf}
 fn data(app:&AppHandle)->Result<PathBuf,String>{std::env::var_os("KARBS_PORT_DATA").map(PathBuf::from).map(Ok).unwrap_or_else(||app.path().app_data_dir().map_err(|_|"Cannot locate app storage.".into()))}
 fn codex_path(app:&AppHandle)->Result<PathBuf,String>{
     if !karbs_port_core::desktop(){return Err("Codex CLI is unavailable on Android.".into());}
@@ -52,13 +52,19 @@ async fn chat_send(app:AppHandle,shared:State<'_,Shared>,turn:Turn)->Result<Stri
     karbs_port_core::validate_turn(&turn)?;
     if turn.full_access&&!shared.preferences.lock().map_err(|_|"Settings unavailable.")?.full_access{return Err("Enable Full access in Settings before sending this task.".into());}
     let mut chat=shared.conversation.try_lock().map_err(|_|"A task is already running.")?;
+    let cancelled=shared.cancel.notified();tokio::pin!(cancelled);cancelled.as_mut().enable();
     let history=if chat.provider==turn.provider{chat.messages.clone()}else{Vec::new()};
     let emit=|message:String|{let _=app.emit("activity",message);};
-    let reply=if turn.provider=="gemini"{let key=shared.key.lock().map_err(|_|"Key state unavailable.")?.clone();karbs_port_core::gemini(&turn,&history,&key,&shared.data.join("workspace"),&emit).await}else{karbs_port_core::codex(&turn,&history,&codex_path(&app)?,&shared.data.join("workspace"),&emit).await};
+    let task=async{if turn.provider=="gemini"{let key=shared.key.lock().map_err(|_|"Key state unavailable.")?.clone();karbs_port_core::gemini(&turn,&history,&key,&shared.data.join("workspace"),&emit).await}else{karbs_port_core::codex(&turn,&history,&codex_path(&app)?,&shared.data.join("workspace"),&emit).await}};
+    let reply=tokio::select!{result=task=>result,_=cancelled=>Err("Task stopped. Actions already completed remain in effect.".into())};
     let (text,messages)=reply?;chat.provider=turn.provider;chat.messages=messages;Ok(text)
 }
 #[tauri::command]
 async fn reset_chat(shared:State<'_,Shared>)->Result<(),String>{let mut chat=shared.conversation.try_lock().map_err(|_|"Wait for the active task to finish.")?;*chat=Conversation::default();Ok(())}
+#[tauri::command]
+fn stop_task(shared:State<Shared>){shared.cancel.notify_waiters();}
+#[tauri::command]
+async fn floating_bar(app:AppHandle,action:String,text:Option<String>,working:Option<bool>)->Result<Value,String>{platform::overlay(&app,&action,text.as_deref().unwrap_or("Karbs · Ready"),working.unwrap_or(false))}
 struct LoginGuard<'a>(&'a AtomicBool);
 impl Drop for LoginGuard<'_>{fn drop(&mut self){self.0.store(false,Ordering::Release);}}
 #[tauri::command]
@@ -89,6 +95,6 @@ pub fn run(){
         let dir=data(app.handle())?;std::fs::create_dir_all(&dir)?;
         let mut preferences=std::fs::read(dir.join("preferences.json")).ok().and_then(|b|serde_json::from_slice::<Preferences>(&b).ok()).unwrap_or_default();
         if !karbs_port_core::desktop(){preferences.full_access=false;preferences.provider="gemini".into();}
-        app.manage(Shared{preferences:Mutex::new(preferences),conversation:tokio::sync::Mutex::new(Conversation::default()),key:Mutex::new(String::new()),login:AtomicBool::new(false),speech:Mutex::new(None),data:dir});updates::start(app.handle().clone());Ok(())
-    }).invoke_handler(tauri::generate_handler![boot,save_preferences,set_gemini_key,use_session_key,attachment_name,list_models,chat_send,reset_chat,login_codex,open_provider,speak,stop_speech,updates::check_update,updates::install_update]).run(tauri::generate_context!()).expect("Unable to start Karbs");
+        app.manage(Shared{preferences:Mutex::new(preferences),conversation:tokio::sync::Mutex::new(Conversation::default()),cancel:tokio::sync::Notify::new(),key:Mutex::new(String::new()),login:AtomicBool::new(false),speech:Mutex::new(None),data:dir});updates::start(app.handle().clone());Ok(())
+    }).invoke_handler(tauri::generate_handler![boot,save_preferences,set_gemini_key,use_session_key,attachment_name,list_models,chat_send,reset_chat,stop_task,floating_bar,login_codex,open_provider,speak,stop_speech,updates::check_update,updates::install_update]).run(tauri::generate_context!()).expect("Unable to start Karbs");
 }

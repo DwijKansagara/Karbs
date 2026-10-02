@@ -41,4 +41,8 @@ pub fn attachment_name(app:&AppHandle,path:&str)->Result<String,String>{
     #[cfg(target_os="android")]{Ok(mobile(app,"fileName",json!({"path":path}))?["name"].as_str().ok_or("Cannot read the selected filename.")?.into())}
     #[cfg(not(target_os="android"))]{let _=app;Ok(std::path::Path::new(path).file_name().ok_or("Invalid filename.")?.to_string_lossy().into())}
 }
+pub fn overlay(app:&AppHandle,action:&str,text:&str,working:bool)->Result<serde_json::Value,String>{
+    #[cfg(target_os="android")]{let command=match action{"status"=>"overlayStatus","permission"=>"overlayPermission","show"=>"showOverlay","hide"=>"hideOverlay","update"=>"updateOverlay",_=>return Err("Unknown floating-bar action.".into())};mobile(app,command,json!({"text":text,"working":working}))}
+    #[cfg(not(target_os="android"))]{let _=(app,action,text,working);Err("This floating bar is available on Android.".into())}
+}
 

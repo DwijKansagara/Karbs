@@ -28,6 +28,7 @@ pub fn validate_turn(turn: &Turn) -> Result<(), String> {
     if turn.full_access && !desktop() { return Err("Desktop Full access is unavailable on this device.".into()); }
     if turn.provider == "codex" && !desktop() { return Err("Codex CLI requires a desktop. Choose Gemini on Android.".into()); }
     if turn.provider == "gemini" { validate_model(&turn.model)?; }
+    if turn.provider == "codex" && !turn.model.trim().is_empty(){validate_model(turn.model.trim())?;}
     if turn.attachments.len() > 4 { return Err("Attach at most four files.".into()); }
     let mut total = 0;
     for file in &turn.attachments {

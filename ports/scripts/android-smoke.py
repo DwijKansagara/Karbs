@@ -7,7 +7,10 @@ WIDTH,HEIGHT=map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size'))[-1])
 def visible(a):
  bounds=list(map(int,re.findall(r'\d+',a.get('bounds',''))))
  return len(bounds)==4 and bounds[2]>bounds[0] and bounds[3]>bounds[1] and 0<=(bounds[0]+bounds[2])/2<WIDTH and 24<(bounds[1]+bounds[3])/2<HEIGHT-24
-def scroll(up=True):adb('shell','input','swipe',str(WIDTH//2),str(int(HEIGHT*(.8 if up else .45))),str(WIDTH//2),str(int(HEIGHT*(.4 if up else .85))),'250')
+def scroll(up=True):
+ # Slow, short drags in the settings gutter avoid fling overshoot on 320px
+ # screens and avoid starting a gesture on a button or editable field.
+ adb('shell','input','swipe',str(WIDTH-24),str(int(HEIGHT*(.8 if up else .55))),str(WIDTH-24),str(int(HEIGHT*(.55 if up else .8))),'600')
 def tree():
  # The Android dump command can return exit code zero with a null root.
  # Remove the last snapshot so Activity restarts cannot reuse stale controls.
@@ -95,7 +98,7 @@ adb('shell','settings','put','secure','enabled_accessibility_services',PACKAGE+'
 adb('shell','settings','put','secure','accessibility_enabled','1');time.sleep(3)
 for _ in range(4):scroll(False)
 if not any('Connections' in n.attrib.get('text','') for n in tree().iter('node')):tap(text('Settings'))
-control=text('Allow Phone Assist for tasks I send');time.sleep(1);tap(control);tap(text('Phone Assist: screen actions'))
+control=text('Allow Phone Assist for tasks I send');time.sleep(1);tap(control);time.sleep(1);tap(text('Phone Assist: screen actions'))
 control=text('Test Phone Assist');time.sleep(1);tap(control)
 # The shell dump tool temporarily suppresses other Accessibility services.
 # Leave Karbs's own service uninterrupted while its real action probe runs.

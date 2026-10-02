@@ -132,12 +132,26 @@ jobs:
           echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npm run build
+      - uses: actions/cache/restore@v4
+        id: android-apk
+        with:
+          path: ports/artifacts/Karbs_0.3.0_android.apk
+          key: signed-android-v1-${{ hashFiles('ports/core/**', 'ports/src/**', 'ports/android/**', 'ports/src-tauri/src/**', 'ports/src-tauri/Cargo*', 'ports/src-tauri/*.json', 'ports/package*.json', 'ports/index.html', 'ports/vite.config.*', 'ports/scripts/configure-android.mjs', 'ports/scripts/collect-artifacts.mjs', '.github/workflows/ports.yml') }}
       - run: npm run tauri -- android init --ci --skip-targets-install
+        if: steps.android-apk.outputs.cache-hit != 'true'
       - run: node scripts/configure-android.mjs
+        if: steps.android-apk.outputs.cache-hit != 'true'
       - run: npm run tauri -- android build --ci --apk --target aarch64 x86_64
+        if: steps.android-apk.outputs.cache-hit != 'true'
       - run: node scripts/collect-artifacts.mjs android universal
+        if: steps.android-apk.outputs.cache-hit != 'true'
       - name: Verify Android publisher signature
         run: "$ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose artifacts/Karbs_0.3.0_android.apk"
+      - uses: actions/cache/save@v4
+        if: steps.android-apk.outputs.cache-hit != 'true'
+        with:
+          path: ports/artifacts/Karbs_0.3.0_android.apk
+          key: ${{ steps.android-apk.outputs.cache-primary-key }}
       - name: Enable emulator acceleration
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

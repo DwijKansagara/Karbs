@@ -25,21 +25,27 @@ def failure(kind,error,trace):
 sys.excepthook=failure
 def node(predicate,timeout=30):
  end=time.monotonic()+timeout
+ direction=True
  while time.monotonic()<end:
   try:root=tree()
   except (subprocess.CalledProcessError,ET.ParseError):time.sleep(1);continue
   parents={child:parent for parent in root.iter() for child in parent}
   for n in root.iter('node'):
-   if not visible(n.attrib) or not predicate(n.attrib):continue
-   bounds=list(map(int,re.findall(r'\d+',n.attrib['bounds'])));x=(bounds[0]+bounds[2])/2;y=(bounds[1]+bounds[3])/2
-   parent=parents.get(n);clipped=False
+   if not predicate(n.attrib):continue
+   bounds=list(map(int,re.findall(r'\d+',n.attrib.get('bounds',''))))
+   if len(bounds)!=4 or bounds[2]<=bounds[0] or bounds[3]<=bounds[1]:continue
+   x=(bounds[0]+bounds[2])/2;y=(bounds[1]+bounds[3])/2
+   parent=parents.get(n);clipped=not visible(n.attrib)
    while parent is not None:
     if parent.attrib.get('scrollable')=='true':
      clip=list(map(int,re.findall(r'\d+',parent.attrib.get('bounds',''))))
-     if len(clip)!=4 or not(clip[0]<=x<clip[2] and clip[1]<=y<clip[3]):clipped=True;break
+     if len(clip)!=4 or not(clip[0]<=x<clip[2] and clip[1]<=y<clip[3]):
+      clipped=True
+      if len(clip)==4:direction=y>=clip[3]
+      break
     parent=parents.get(parent)
    if not clipped:return n.attrib
-  scroll()
+  scroll(direction)
   time.sleep(1)
  raise AssertionError('Expected Karbs UI element was not found.')
 def text(value):

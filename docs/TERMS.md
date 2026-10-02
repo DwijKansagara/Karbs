@@ -1,6 +1,6 @@
-EFFECTIVE 2 OCTOBER 2026
-
 # Terms and conditions
+
+Effective: 2 OCTOBER 2026
 
 The conditions for using the Karbs application and website.
 

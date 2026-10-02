@@ -1,6 +1,6 @@
-EFFECTIVE 2 OCTOBER 2026
-
 # Privacy policy
+
+Effective: 2 OCTOBER 2026
 
 What Karbs reads, stores and sends when you use it.
 

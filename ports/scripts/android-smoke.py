@@ -1,6 +1,7 @@
 """Exercise a real emulator with a clearly fake key, never a provider credential."""
 import subprocess,time,xml.etree.ElementTree as ET,re,sys,pathlib
 PACKAGE='com.dwijkansagara.karbs.portable'
+DUMP_WINDOWS=False
 def adb(*args):return subprocess.check_output(['adb',*args],text=True).strip()
 WIDTH,HEIGHT=map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size'))[-1])
 def visible(a):
@@ -11,7 +12,8 @@ def tree():
  # The Android dump command can return exit code zero with a null root.
  # Remove the last snapshot so Activity restarts cannot reuse stale controls.
  adb('shell','rm','-f','/sdcard/karbs-smoke.xml')
- result=adb('shell','uiautomator','dump','--windows','/sdcard/karbs-smoke.xml')
+ flags=['--windows'] if DUMP_WINDOWS else []
+ result=adb('shell','uiautomator','dump',*flags,'/sdcard/karbs-smoke.xml')
  if 'dumped' not in result.lower():raise subprocess.CalledProcessError(1,'uiautomator dump')
  return ET.fromstring(adb('shell','cat','/sdcard/karbs-smoke.xml'))
 def failure(kind,error,trace):
@@ -72,10 +74,11 @@ print('PASS: encrypted key reloaded and removed',flush=True)
 adb('shell','appops','set',PACKAGE,'SYSTEM_ALERT_WINDOW','allow')
 adb('shell','pm','grant',PACKAGE,'android.permission.POST_NOTIFICATIONS')
 for _ in range(4):scroll(False)
-tap(text('Show floating bar'));adb('shell','input','keyevent','3')
+tap(text('Show floating bar'));time.sleep(1);DUMP_WINDOWS=True;adb('shell','input','keyevent','3')
 tap(text('Floating Karbs'));text('Open Karbs');text('Stop phone actions')
 subprocess.check_call(['adb','shell','screencap','-p','/sdcard/karbs-floating.png']);subprocess.check_call(['adb','pull','/sdcard/karbs-floating.png','ports/artifacts/android-floating-smoke.png'])
 tap(text('Open Karbs'));text('Settings');tap(text('Hide'))
+DUMP_WINDOWS=False;time.sleep(1)
 print('PASS: floating bar over launcher, expand/open/hide',flush=True)
 adb('shell','settings','put','secure','enabled_accessibility_services',PACKAGE+'/'+PACKAGE+'.KarbsAccessibilityService')
 adb('shell','settings','put','secure','accessibility_enabled','1');time.sleep(3)

@@ -81,11 +81,16 @@ class KarbsPlatformPlugin(private val activity: Activity): Plugin(activity) {
                 val field = items.firstOrNull { it.optBoolean("editable") } ?: error("The test text field is not accessible.")
                 check(service.nodeAction(field.getInt("id"), "Karbs test") && input.text.toString() == "Karbs test") { "Android did not allow text entry." }
                 val button = items.firstOrNull { it.optString("text").equals("Finish test", true) } ?: error("The test button is not accessible.")
-                check(service.nodeAction(button.getInt("id"), null) && clicked) { "Android did not allow the test click." }
-                check(service.navigate("home")) { "Android did not allow Home navigation." }
+                check(service.nodeAction(button.getInt("id"), null)) { "Android did not allow the test click." }
+                // AlertDialog dispatches its button listener through a Handler.
+                // Let that callback run before checking its observable result.
                 Handler(Looper.getMainLooper()).postDelayed({ try {
-                    val screen = service.inspect();check(screen.getJSONArray("nodes").length() > 0 && screen.optString("package") != activity.packageName) { "The home screen is unavailable to Phone Assist." };finish(null)
-                } catch(e: Exception) { finish(e.message ?: "Phone Assist home inspection failed.") } }, 700)
+                    check(clicked) { "Android did not deliver the test click." }
+                    check(service.navigate("home")) { "Android did not allow Home navigation." }
+                    Handler(Looper.getMainLooper()).postDelayed({ try {
+                        val screen = service.inspect();check(screen.getJSONArray("nodes").length() > 0 && screen.optString("package") != activity.packageName) { "The home screen is unavailable to Phone Assist." };finish(null)
+                    } catch(e: Exception) { finish(e.message ?: "Phone Assist home inspection failed.") } }, 700)
+                } catch(e: Exception) { finish(e.message ?: "Phone Assist click verification failed.") } }, 250)
             } catch(e: Exception) { finish(e.message ?: "Phone Assist test failed.") } }, 700)
         }
     }

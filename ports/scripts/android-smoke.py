@@ -39,7 +39,12 @@ adb('shell','am','start','-n',PACKAGE+'/.MainActivity')
 text('Settings');assert adb('shell','pidof',PACKAGE)
 tap(text('Settings'));tap(node(lambda a:a.get('password')=='true'))
 adb('shell','input','text','karbs-emulator-fixture-not-a-real-api-key')
-if any('inputmethod' in n.attrib.get('package','') for n in tree().iter('node')):adb('shell','input','keyevent','4')
+# WebView accessibility dumps can omit the IME even while it covers buttons.
+# Inspect the actual input-method state before Back, so a hidden IME does not
+# accidentally dismiss the Activity instead.
+ime=adb('shell','dumpsys','input_method')
+if re.search(r'(?:mInputShown|isInputViewShown)\s*=\s*true',ime):
+ adb('shell','input','keyevent','4');time.sleep(1)
 tap(text('Save key securely'));text('Key saved in secure device storage')
 adb('shell','am','force-stop',PACKAGE);adb('shell','am','start','-n',PACKAGE+'/.MainActivity')
 tap(text('Settings'));text('Gemini key connected');tap(text('Remove key'));text('No Gemini key saved')

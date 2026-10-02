@@ -17,7 +17,9 @@ sys.excepthook=failure
 def node(predicate,timeout=30):
  end=time.monotonic()+timeout
  while time.monotonic()<end:
-  for n in tree().iter('node'):
+  try:root=tree()
+  except (subprocess.CalledProcessError,ET.ParseError):time.sleep(1);continue
+  for n in root.iter('node'):
    if predicate(n.attrib):return n.attrib
   adb('shell','input','swipe','300','650','300','300','250')
   time.sleep(1)

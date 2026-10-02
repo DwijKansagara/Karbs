@@ -56,12 +56,13 @@ async fn chat_send(app:AppHandle,shared:State<'_,Shared>,turn:Turn)->Result<Stri
     let mut chat=shared.conversation.try_lock().map_err(|_|"A task is already running.")?;
     let cancelled=shared.cancel.notified();tokio::pin!(cancelled);cancelled.as_mut().enable();
     let history=if chat.provider==turn.provider{chat.messages.clone()}else{Vec::new()};
-    let emit=|message:String|{let _=app.emit("activity",message);};
+    let emit=|message:String|{#[cfg(target_os="android")]let _=platform::overlay(&app,"update",&message,true);let _=app.emit("activity",message);};
     struct PhoneGuard(Option<AppHandle>);impl Drop for PhoneGuard{fn drop(&mut self){if let Some(app)=&self.0{let _=platform::phone(app,"phoneTask",json!({"active":false}));}}}
     let _phone_guard=if turn.phone_access{platform::phone(&app,"phoneTask",json!({"active":true}))?;PhoneGuard(Some(app.clone()))}else{PhoneGuard(None)};
     let phone_app=app.clone();let phone_executor:Box<karbs_port_core::PhoneExecutor>=Box::new(move|args:Value|{let app=phone_app.clone();Box::pin(async move{let action=args["action"].as_str().ok_or("Missing phone action.")?.to_owned();let args=serde_json::to_string(&args).map_err(|_|"Invalid phone arguments.")?;let result=tauri::async_runtime::spawn_blocking(move||platform::phone(&app,"phoneAction",json!({"action":action,"args":args}))).await.map_err(|_|"Phone service interrupted.")??;tokio::time::sleep(std::time::Duration::from_millis(600)).await;serde_json::to_string(&result).map_err(|_|"Invalid phone result.".into())})});
     let task=async{if turn.provider=="gemini"{let key=shared.key.lock().map_err(|_|"Key state unavailable.")?.clone();karbs_port_core::gemini(&turn,&history,&key,&shared.data.join("workspace"),&emit,if turn.phone_access{Some(phone_executor.as_ref())}else{None}).await}else{karbs_port_core::codex(&turn,&history,&codex_path(&app)?,&shared.data.join("workspace"),&emit).await}};
     let reply=tokio::select!{result=task=>result,_=cancelled=>Err("Task stopped. Actions already completed remain in effect.".into())};
+    #[cfg(target_os="android")]let _=platform::overlay(&app,"update",if reply.is_ok(){"Response complete. Open Karbs to read it."}else{"Task stopped or failed. Open Karbs for details."},false);
     let (text,messages)=reply?;chat.provider=turn.provider;chat.messages=messages;Ok(text)
 }
 #[tauri::command]
@@ -70,6 +71,8 @@ async fn reset_chat(shared:State<'_,Shared>)->Result<(),String>{let mut chat=sha
 fn stop_task(shared:State<Shared>){shared.cancel.notify_waiters();}
 #[tauri::command]
 async fn floating_bar(app:AppHandle,action:String,text:Option<String>,working:Option<bool>)->Result<Value,String>{platform::overlay(&app,&action,text.as_deref().unwrap_or("Karbs · Ready"),working.unwrap_or(false))}
+#[tauri::command]
+async fn display_frame(app:AppHandle)->Result<Value,String>{platform::phone(&app,"displayFrame",json!({}))}
 #[tauri::command]
 async fn phone_setup(app:AppHandle,shared:State<'_,Shared>,action:String)->Result<Value,String>{match action.as_str(){"permission"=>platform::phone(&app,"phonePermission",json!({})),"status"=>platform::phone(&app,"phoneStatus",json!({})),"test"=>{if !shared.preferences.lock().map_err(|_|"Settings unavailable.")?.phone_access{return Err("Enable Phone Assist first.".into());}let _guard=shared.conversation.try_lock().map_err(|_|"Wait for the active task to finish.")?;platform::phone(&app,"testPhone",json!({}))},_=>Err("Unknown phone setup action.".into())}}
 struct LoginGuard<'a>(&'a AtomicBool);
@@ -103,5 +106,5 @@ pub fn run(){
         let mut preferences=std::fs::read(dir.join("preferences.json")).ok().and_then(|b|serde_json::from_slice::<Preferences>(&b).ok()).unwrap_or_default();
         if !karbs_port_core::desktop(){preferences.full_access=false;preferences.provider="gemini".into();}
         app.manage(Shared{preferences:Mutex::new(preferences),conversation:tokio::sync::Mutex::new(Conversation::default()),cancel:tokio::sync::Notify::new(),key:Mutex::new(String::new()),login:AtomicBool::new(false),speech:Mutex::new(None),data:dir});updates::start(app.handle().clone());Ok(())
-    }).invoke_handler(tauri::generate_handler![boot,save_preferences,set_gemini_key,use_session_key,attachment_name,list_models,chat_send,reset_chat,stop_task,floating_bar,phone_setup,login_codex,open_provider,speak,stop_speech,updates::check_update,updates::install_update]).run(tauri::generate_context!()).expect("Unable to start Karbs");
+    }).invoke_handler(tauri::generate_handler![boot,save_preferences,set_gemini_key,use_session_key,attachment_name,list_models,chat_send,reset_chat,stop_task,floating_bar,display_frame,phone_setup,login_codex,open_provider,speak,stop_speech,updates::check_update,updates::install_update]).run(tauri::generate_context!()).expect("Unable to start Karbs");
 }

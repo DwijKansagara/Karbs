@@ -11,6 +11,11 @@ import android.os.Handler
 import android.os.Looper
 import android.app.AlertDialog
 import android.widget.EditText
+import android.view.View
+import android.view.ViewGroup
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.webkit.WebView
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.speech.tts.TextToSpeech
@@ -39,6 +44,21 @@ import org.json.JSONObject
 @Keep @InvokeArg class PhoneArgs { var action: String = ""; var args: String = "{}"; var active: Boolean = false }
 @Keep @TauriPlugin
 class KarbsPlatformPlugin(private val activity: Activity): Plugin(activity) {
+    @Command fun displayFrame(invoke: Invoke) {
+        activity.runOnUiThread {
+            val decor = activity.window.decorView
+            if (Build.VERSION.SDK_INT >= 30) activity.window.insetsController?.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS)
+            else decor.systemUiVisibility = decor.systemUiVisibility and View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR.inv() and (if (Build.VERSION.SDK_INT >= 26) View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv() else -1)
+            fun find(view: View): WebView? { if (view is WebView) return view; if (view is ViewGroup) for (i in 0 until view.childCount) find(view.getChildAt(i))?.let { return it }; return null }
+            val web = find(decor); val location = IntArray(2); web?.getLocationOnScreen(location)
+            val insets = decor.rootWindowInsets
+            val top = if (Build.VERSION.SDK_INT >= 30) insets?.getInsets(WindowInsets.Type.systemBars())?.top ?: 0 else insets?.systemWindowInsetTop ?: 0
+            val bottom = if (Build.VERSION.SDK_INT >= 30) insets?.getInsets(WindowInsets.Type.systemBars())?.bottom ?: 0 else insets?.systemWindowInsetBottom ?: 0
+            val bounds = if (Build.VERSION.SDK_INT >= 30) activity.windowManager.currentWindowMetrics.bounds else { val metrics = android.util.DisplayMetrics(); activity.windowManager.defaultDisplay.getRealMetrics(metrics); android.graphics.Rect(0,0,metrics.widthPixels,metrics.heightPixels) }
+            val density = activity.resources.displayMetrics.density
+            val result = JSObject();result.put("top", if(web == null) 0 else (bounds.top + top - location[1]).coerceAtLeast(0)/density);result.put("bottom", if(web == null) 0 else (location[1] + web.height - bounds.bottom + bottom).coerceAtLeast(0)/density);invoke.resolve(result)
+        }
+    }
     @Command fun phoneStatus(invoke: Invoke) { val result = JSObject(); result.put("enabled", KarbsAccessibilityService.instance != null); invoke.resolve(result) }
     @Command fun phonePermission(invoke: Invoke) { activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); invoke.resolve(JSObject()) }
     @Command fun testPhone(invoke: Invoke) {
@@ -48,7 +68,7 @@ class KarbsPlatformPlugin(private val activity: Activity): Plugin(activity) {
             service.taskActive = true
             val input = EditText(activity).apply { hint = "Phone Assist test field" }
             var clicked = false
-            val dialog = AlertDialog.Builder(activity).setTitle("Karbs Phone Assist test").setMessage("Testing this dialog only. No content is sent to Gemini.").setView(input).setPositiveButton("Finish test") { _, _ -> clicked = true }.setCancelable(false).create()
+            val dialog = AlertDialog.Builder(activity, android.R.style.Theme_Material_Dialog_Alert).setTitle("Karbs Phone Assist test").setMessage("Testing this dialog only. No content is sent to Gemini.").setView(input).setPositiveButton("Finish test") { _, _ -> clicked = true }.setCancelable(false).create()
             fun finish(error: String?) {
                 service.taskActive = false; dialog.dismiss()
                 try { activity.packageManager.getLaunchIntentForPackage(activity.packageName)?.let { activity.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) } } catch (_: Exception) {}

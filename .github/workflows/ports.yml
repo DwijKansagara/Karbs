@@ -67,6 +67,7 @@ jobs:
           test -s "$(dirname "$CODEX")/CODEX-NOTICE"
           test -s "$(dirname "$CODEX")/RATATUI-LICENSE"
           [[ "$("$CODEX" --version)" == *0.160.0* ]]
+          "$CODEX" --ignore-user-config --disable hooks --disable memories features list > "$RUNNER_TEMP/karbs-codex-features.txt"
           timeout 15s xvfb-run -a env KARBS_PORT_DATA="$RUNNER_TEMP/karbs-smoke" WEBKIT_DISABLE_DMABUF_RENDERER=1 target/release/karbs-port > "$RUNNER_TEMP/karbs-smoke.log" 2>&1 &
           PID=$!
           sleep 6
@@ -80,6 +81,7 @@ jobs:
           test -s "$APP/Contents/Resources/codex/CODEX-NOTICE"
           test -s "$APP/Contents/Resources/codex/RATATUI-LICENSE"
           [[ "$("$APP/Contents/Resources/codex/codex" --version)" == *0.160.0* ]]
+          "$APP/Contents/Resources/codex/codex" --ignore-user-config --disable hooks --disable memories features list > "$RUNNER_TEMP/karbs-codex-features.txt"
           mkdir -p "$RUNNER_TEMP/karbs-smoke"
           KARBS_PORT_DATA="$RUNNER_TEMP/karbs-smoke" "$APP/Contents/MacOS/karbs-port" > "$RUNNER_TEMP/karbs-smoke.log" 2>&1 &
           PID=$!

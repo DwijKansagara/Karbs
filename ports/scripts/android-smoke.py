@@ -2,6 +2,11 @@
 import subprocess,time,xml.etree.ElementTree as ET,re,sys,pathlib
 PACKAGE='com.dwijkansagara.karbs.portable'
 def adb(*args):return subprocess.check_output(['adb',*args],text=True).strip()
+WIDTH,HEIGHT=map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size'))[-1])
+def visible(a):
+ bounds=list(map(int,re.findall(r'\d+',a.get('bounds',''))))
+ return len(bounds)==4 and bounds[2]>bounds[0] and bounds[3]>bounds[1] and 0<=(bounds[0]+bounds[2])/2<WIDTH and 24<(bounds[1]+bounds[3])/2<HEIGHT-24
+def scroll(up=True):adb('shell','input','swipe',str(WIDTH//2),str(int(HEIGHT*(.8 if up else .45))),str(WIDTH//2),str(int(HEIGHT*(.4 if up else .85))),'250')
 def tree():
  adb('shell','uiautomator','dump','/sdcard/karbs-smoke.xml')
  return ET.fromstring(adb('shell','cat','/sdcard/karbs-smoke.xml'))
@@ -20,8 +25,8 @@ def node(predicate,timeout=30):
   try:root=tree()
   except (subprocess.CalledProcessError,ET.ParseError):time.sleep(1);continue
   for n in root.iter('node'):
-   if predicate(n.attrib):return n.attrib
-  adb('shell','input','swipe','300','650','300','300','250')
+   if visible(n.attrib) and predicate(n.attrib):return n.attrib
+  scroll()
   time.sleep(1)
  raise AssertionError('Expected Karbs UI element was not found.')
 def text(value):
@@ -40,14 +45,14 @@ adb('shell','am','force-stop',PACKAGE);adb('shell','am','start','-n',PACKAGE+'/.
 tap(text('Settings'));text('Gemini key connected');tap(text('Remove key'));text('No Gemini key saved')
 adb('shell','appops','set',PACKAGE,'SYSTEM_ALERT_WINDOW','allow')
 adb('shell','pm','grant',PACKAGE,'android.permission.POST_NOTIFICATIONS')
-for _ in range(4):adb('shell','input','swipe','300','300','300','700','200')
+for _ in range(4):scroll(False)
 tap(text('Show floating bar'));adb('shell','input','keyevent','3')
 tap(text('Floating Karbs'));text('Open Karbs');text('Stop phone actions')
 subprocess.check_call(['adb','shell','screencap','-p','/sdcard/karbs-floating.png']);subprocess.check_call(['adb','pull','/sdcard/karbs-floating.png','ports/artifacts/android-floating-smoke.png'])
 tap(text('Open Karbs'));text('Settings');tap(text('Hide'))
 adb('shell','settings','put','secure','enabled_accessibility_services',PACKAGE+'/'+PACKAGE+'.KarbsAccessibilityService')
 adb('shell','settings','put','secure','accessibility_enabled','1');time.sleep(3)
-for _ in range(4):adb('shell','input','swipe','300','300','300','700','200')
+for _ in range(4):scroll(False)
 if not any('Connections' in n.attrib.get('text','') for n in tree().iter('node')):tap(text('Settings'))
 tap(text('Allow Phone Assist for tasks I send'));text('Phone Assist: screen actions')
 tap(text('Test Phone Assist'));text('Phone Assist test passed')

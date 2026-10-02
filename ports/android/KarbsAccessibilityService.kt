@@ -27,7 +27,8 @@ class KarbsAccessibilityService : AccessibilityService() {
         val items = JSONArray(); var visited = 0
         fun visit(node: AccessibilityNodeInfo, depth: Int) {
             if (++visited > 250 || depth > 25 || !node.isVisibleToUser || node.isPassword) return
-            val id = ++sequence; val bounds = Rect(); node.getBoundsInScreen(bounds)
+            val bounds = Rect(); node.getBoundsInScreen(bounds); if (bounds.isEmpty) return
+            val id = ++sequence
             nodes[id] = AccessibilityNodeInfo.obtain(node)
             items.put(JSONObject().put("id", id).put("text", node.text?.toString()?.take(300) ?: "").put("label", node.contentDescription?.toString()?.take(300) ?: "")
                 .put("clickable", node.isClickable).put("editable", node.isEditable).put("bounds", JSONArray(listOf(bounds.left,bounds.top,bounds.right,bounds.bottom))))
@@ -39,6 +40,7 @@ class KarbsAccessibilityService : AccessibilityService() {
         check(taskActive) { "Phone task stopped." }
         val node = nodes[id] ?: error("Inspect the screen again before using this node.")
         check(node.refresh() && node.isVisibleToUser && !node.isPassword) { "Screen changed or this field is protected. Inspect again." }
+        val bounds = Rect();node.getBoundsInScreen(bounds);check(!bounds.isEmpty) { "This control is off screen. Scroll and inspect again." }
         return if (text == null) node.performAction(AccessibilityNodeInfo.ACTION_CLICK) else {
             require(text.length <= 4000 && node.isEditable) { "Choose an editable field and text under 4000 characters." }
             node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) })

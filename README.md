@@ -4,7 +4,7 @@ Meet Karbs, your personal desktop assistant.
 
 Karbs brings Codex and Gemini chat, session activity, file attachments and optional desktop tools into a compact Windows panel. Click an agent to expand its activity; use **Open app** to bring its separate application forward.
 
-**Release status:** Windows x64 is the implemented release target. macOS, Linux, Android and iOS installers are not available. This repository does not claim those platforms work.
+**Release status:** Windows x64 has a stable release. macOS, Linux and Android preview downloads appear on the website after their native checks pass. Check the [download page](https://karbs.antideploy.app/#downloads) for current availability. iOS is not available.
 
 macOS, Linux and Android preview development is in [ports/](ports/README.md). Those ports have different capabilities and must pass native build checks before download links are offered.
 

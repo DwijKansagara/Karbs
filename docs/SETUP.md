@@ -10,3 +10,17 @@
 Data and downloaded components default to `%LOCALAPPDATA%/Karbs`. Advanced portable installs can set `COUCOU_DATA_DIR` to a writable directory on another drive before launching. That environment variable retains its historical internal name; the public app is Karbs.
 
 Do not give a test agent deletion, payment or account-management work. A simple initial test is to create a new folder inside Documents, write a short text file there, and verify its content.
+
+## Native platform previews
+
+Use only a published preview download from the Karbs website or GitHub releases. These have different capabilities from the Windows app; see [the platform guide](../ports/README.md).
+
+On macOS, choose Apple Silicon or Intel for your Mac and copy Karbs Preview from the DMG to Applications. The preview is ad-hoc signed, not Apple-notarized. On Linux x64, use the DEB through your package manager, which resolves GTK/WebKit/Secret Service and espeak-ng dependencies. The AppImage needs a compatible system and its runtime dependencies.
+
+On Android, install the signed APK and approve installation in Android. Open Karbs Settings and connect your own Gemini API key. Android does not run the desktop Codex CLI. System reply speech uses your installed Android speech engine.
+
+To float Karbs, choose **Allow floating bar**, grant Android Display over other apps permission, return to Karbs and choose **Show floating bar**. Allow notifications if you want the persistent Hide control in the notification tray. Drag the face to reposition it; tap it for status, Open Karbs, Hide and Stop phone actions.
+
+For phone tasks, choose **Set up Android Accessibility**, enable **Karbs Phone Assist**, return to Karbs and enable **Allow Phone Assist for tasks I send**. Use **Test Phone Assist** first. It checks its own text field/button, Home navigation and screen inspection, without sending screen contents to Gemini. Then send a small task such as opening your browser to a requested URL. Phone Assist screen text is sent to your Gemini API account during an enabled task. It cannot access private app files or bypass protected screens. Disable the task setting or the Android Accessibility service to revoke it.
+
+Desktop previews check their separate signed update channel. Android updates use a newer APK signed by the same publisher key and still require Android installation approval. Source commits alone are not application updates.

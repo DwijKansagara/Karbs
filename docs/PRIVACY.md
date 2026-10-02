@@ -1,6 +1,6 @@
-# Privacy policy
+EFFECTIVE 2 OCTOBER 2026
 
-Effective: 2 October 2026
+# Privacy policy
 
 What Karbs reads, stores and sends when you use it.
 
@@ -11,6 +11,14 @@ Karbs is published by Dwij Kansagara. Questions about this policy can be sent to
 ## On your device
 
 Preferences, working files, converted attachments, speech models and activity logs are stored in the Karbs data directory, normally your local application-data folder. Activity logs can include prompts, file paths, window names and commands. API keys are saved in Windows Credential Manager. Codex manages its own sign-in credentials. The publisher does not receive those credentials automatically.
+
+## Native platform previews
+
+macOS and Linux store Gemini keys in the system Keychain or Secret Service. Android stores only encrypted key data, protected by an Android Keystore key. A session-only key stays in memory. Preview conversations and task activity stay in memory; preferences and temporary Codex attachments use private application storage. Device system text-to-speech follows the settings and policies of your installed speech engine.
+
+## Android floating bar and Phone Assist
+
+The floating bar requires Display over other apps permission and runs as a user-started foreground service with a persistent notification and Hide control. It does not record your screen. Phone Assist requires you to enable the Karbs Accessibility service and the separate Karbs task setting. It reads accessible screen text only when an enabled task calls the inspection tool, excludes password nodes, and sends the returned text to your Gemini API account as a tool result. It can click, type, swipe, navigate, list launchable apps and open apps or web URLs for that task. It is disarmed when a task finishes or stops. Stop phone actions from the floating bar, turn the task setting off, or disable the service in Android settings to revoke control. Protected screens and private app files remain subject to Android restrictions.
 
 ## Your selected AI provider
 

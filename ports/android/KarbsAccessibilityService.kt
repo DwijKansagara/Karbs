@@ -42,7 +42,20 @@ class KarbsAccessibilityService : AccessibilityService() {
         check(taskActive) { "Phone task stopped." }
         val node = nodes[id] ?: error("Inspect the screen again before using this node.")
         check(node.refresh() && node.isVisibleToUser && !node.isPassword) { "Screen changed or this field is protected. Inspect again." }
-        val bounds = Rect();node.getBoundsInScreen(bounds);check(!bounds.isEmpty) { "This control is off screen. Scroll and inspect again." }
+        val bounds = Rect();node.getBoundsInScreen(bounds)
+        var clipped = bounds.isEmpty
+        var parent = node.parent
+        var depth = 0
+        while (parent != null && depth++ < 32) {
+            val current = parent
+            parent = null
+            try {
+                if (current.isScrollable) { val viewport = Rect();current.getBoundsInScreen(viewport);if (!bounds.intersect(viewport)) clipped = true }
+                parent = current.parent
+            } finally { current.recycle() }
+        }
+        parent?.recycle()
+        check(!clipped) { "This control is off screen. Scroll and inspect again." }
         return if (text == null) node.performAction(AccessibilityNodeInfo.ACTION_CLICK) else {
             require(text.length <= 4000 && node.isEditable) { "Choose an editable field and text under 4000 characters." }
             node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) })

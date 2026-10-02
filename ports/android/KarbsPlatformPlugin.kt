@@ -7,6 +7,10 @@ import android.os.Build
 import android.Manifest
 import android.content.pm.PackageManager
 import android.provider.Settings
+import android.os.Handler
+import android.os.Looper
+import android.app.AlertDialog
+import android.widget.EditText
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.speech.tts.TextToSpeech
@@ -19,7 +23,7 @@ import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
 import app.tauri.plugin.Plugin
 import app.tauri.plugin.Invoke
-import app.tauri.JSObject
+import app.tauri.plugin.JSObject
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -37,6 +41,34 @@ import org.json.JSONObject
 class KarbsPlatformPlugin(private val activity: Activity): Plugin(activity) {
     @Command fun phoneStatus(invoke: Invoke) { val result = JSObject(); result.put("enabled", KarbsAccessibilityService.instance != null); invoke.resolve(result) }
     @Command fun phonePermission(invoke: Invoke) { activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); invoke.resolve(JSObject()) }
+    @Command fun testPhone(invoke: Invoke) {
+        activity.runOnUiThread {
+            val service = KarbsAccessibilityService.instance
+            if (service == null || service.taskActive) { invoke.reject("Enable Phone Assist and wait for any active task to finish."); return@runOnUiThread }
+            service.taskActive = true
+            val input = EditText(activity).apply { hint = "Phone Assist test field" }
+            var clicked = false
+            val dialog = AlertDialog.Builder(activity).setTitle("Karbs Phone Assist test").setMessage("Testing this dialog only. No content is sent to Gemini.").setView(input).setPositiveButton("Finish test") { _, _ -> clicked = true }.setCancelable(false).create()
+            fun finish(error: String?) {
+                service.taskActive = false; dialog.dismiss()
+                try { activity.packageManager.getLaunchIntentForPackage(activity.packageName)?.let { activity.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) } } catch (_: Exception) {}
+                if (error == null) { val result = JSObject(); result.put("ok", true); invoke.resolve(result) } else invoke.reject(error)
+            }
+            dialog.show();dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+            Handler(Looper.getMainLooper()).postDelayed({ try {
+                val nodes = service.inspect().getJSONArray("nodes")
+                val items = (0 until nodes.length()).map { nodes.getJSONObject(it) }
+                val field = items.firstOrNull { it.optBoolean("editable") } ?: error("The test text field is not accessible.")
+                check(service.nodeAction(field.getInt("id"), "Karbs test") && input.text.toString() == "Karbs test") { "Android did not allow text entry." }
+                val button = items.firstOrNull { it.optString("text").equals("Finish test", true) } ?: error("The test button is not accessible.")
+                check(service.nodeAction(button.getInt("id"), null) && clicked) { "Android did not allow the test click." }
+                check(service.navigate("home")) { "Android did not allow Home navigation." }
+                Handler(Looper.getMainLooper()).postDelayed({ try {
+                    val screen = service.inspect();check(screen.getJSONArray("nodes").length() > 0 && screen.optString("package") != activity.packageName) { "The home screen is unavailable to Phone Assist." };finish(null)
+                } catch(e: Exception) { finish(e.message ?: "Phone Assist home inspection failed.") } }, 700)
+            } catch(e: Exception) { finish(e.message ?: "Phone Assist test failed.") } }, 700)
+        }
+    }
     @Command fun phoneTask(invoke: Invoke) {
         val active = invoke.parseArgs(PhoneArgs::class.java).active
         activity.runOnUiThread { val service = KarbsAccessibilityService.instance; if (active && service == null) invoke.reject("Enable Karbs Phone Assist in Android Accessibility settings first.") else { service?.taskActive = active; invoke.resolve(JSObject()) } }

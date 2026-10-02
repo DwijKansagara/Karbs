@@ -71,7 +71,7 @@ fn stop_task(shared:State<Shared>){shared.cancel.notify_waiters();}
 #[tauri::command]
 async fn floating_bar(app:AppHandle,action:String,text:Option<String>,working:Option<bool>)->Result<Value,String>{platform::overlay(&app,&action,text.as_deref().unwrap_or("Karbs · Ready"),working.unwrap_or(false))}
 #[tauri::command]
-async fn phone_setup(app:AppHandle,action:String)->Result<Value,String>{match action.as_str(){"permission"=>platform::phone(&app,"phonePermission",json!({})),"status"=>platform::phone(&app,"phoneStatus",json!({})),_=>Err("Unknown phone setup action.".into())}}
+async fn phone_setup(app:AppHandle,shared:State<'_,Shared>,action:String)->Result<Value,String>{match action.as_str(){"permission"=>platform::phone(&app,"phonePermission",json!({})),"status"=>platform::phone(&app,"phoneStatus",json!({})),"test"=>{if !shared.preferences.lock().map_err(|_|"Settings unavailable.")?.phone_access{return Err("Enable Phone Assist first.".into());}let _guard=shared.conversation.try_lock().map_err(|_|"Wait for the active task to finish.")?;platform::phone(&app,"testPhone",json!({}))},_=>Err("Unknown phone setup action.".into())}}
 struct LoginGuard<'a>(&'a AtomicBool);
 impl Drop for LoginGuard<'_>{fn drop(&mut self){self.0.store(false,Ordering::Release);}}
 #[tauri::command]

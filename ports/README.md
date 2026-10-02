@@ -11,7 +11,7 @@ Native Tauri 2 app for macOS, Linux and Android. The stable Windows app lives in
 | Full access | Opt-in native command execution for the requested task | Not supported |
 | Phone Assist | Not applicable | Opt-in Gemini accessible-screen actions; Android Accessibility permission required |
 | Floating assistant | Standard application window | Draggable face/status bar, explicit Android overlay permission |
-| Pointer control, external-session monitoring, voice dictation | Not implemented in this preview | Not implemented |
+| Windows pointer tools, external-session monitoring, voice dictation | Not implemented in this preview | Not implemented |
 | Reply speech | macOS system voice; Linux `espeak-ng` | Installed Android TTS engine |
 | Secure Gemini key storage | macOS Keychain / Linux Secret Service | AES-GCM with an Android Keystore key |
 | Updates | Signed preview channel, user initiates installation | Signed APK; Android asks before installing |
@@ -38,6 +38,8 @@ Android generation runs `tauri android init`, then `scripts/configure-android.mj
 On Android, Settings provides **Allow floating bar**, **Show floating bar**, and **Hide floating bar**. The bar is a user-started foreground service with a persistent stop notification. Drag its face to reposition it; tap to expand status and Open Karbs/Hide controls. The overlay permission grants no access to other apps' files or controls. It does not start on boot or record the screen.
 
 **Phone Assist** is separate and off by default. Enable Karbs Phone Assist in Android Accessibility settings, then enable it in Karbs. During a task you send, Gemini can inspect visible accessible screen text, click nodes, enter text in ordinary fields, swipe, navigate, list launchable apps, and open apps or web URLs. Screen text is sent to your Gemini API account only as a task tool result; it is not monitored in the background. Password nodes are excluded. The service is disarmed when the task finishes or stops; the floating bar's **Stop phone actions** disarms it immediately. Android can withhold protected screens and private app data. This is not unrestricted device ownership or root access.
+
+Use **Test Phone Assist** before connecting a real task. It checks text entry and a click in Karbs's own temporary test dialog, navigates Home, inspects the accessible home screen and returns to Karbs. No test screen contents are sent to Gemini. Android 13+ may also ask for notification permission when you show the floating bar; allowing it places the persistent Hide control in the notification tray.
 
 macOS builds use ad-hoc signing. They are not Apple-notarized; normal Gatekeeper checks still apply. Linux packages target Ubuntu 22.04 or newer x64 with GTK/WebKit dependencies. Android targets Android 7 or newer, arm64 and x86_64, with NDK 28 for 16 KB page compatibility. Physical-device provider and voice testing is still required before claiming full feature parity.
 

@@ -8,7 +8,11 @@ def visible(a):
  return len(bounds)==4 and bounds[2]>bounds[0] and bounds[3]>bounds[1] and 0<=(bounds[0]+bounds[2])/2<WIDTH and 24<(bounds[1]+bounds[3])/2<HEIGHT-24
 def scroll(up=True):adb('shell','input','swipe',str(WIDTH//2),str(int(HEIGHT*(.8 if up else .45))),str(WIDTH//2),str(int(HEIGHT*(.4 if up else .85))),'250')
 def tree():
- adb('shell','uiautomator','dump','/sdcard/karbs-smoke.xml')
+ # The Android dump command can return exit code zero with a null root.
+ # Remove the last snapshot so Activity restarts cannot reuse stale controls.
+ adb('shell','rm','-f','/sdcard/karbs-smoke.xml')
+ result=adb('shell','uiautomator','dump','/sdcard/karbs-smoke.xml')
+ if 'dumped' not in result.lower():raise subprocess.CalledProcessError(1,'uiautomator dump')
  return ET.fromstring(adb('shell','cat','/sdcard/karbs-smoke.xml'))
 def failure(kind,error,trace):
  try:

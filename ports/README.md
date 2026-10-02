@@ -9,6 +9,7 @@ Native Tauri 2 app for macOS, Linux and Android. The stable Windows app lives in
 | Text, image and PDF attachments | Gemini; Codex accepts text/images | Gemini |
 | GIF attachments | First frame converted to PNG | First frame converted to PNG |
 | Full access | Opt-in native command execution for the requested task | Not supported |
+| Phone Assist | Not applicable | Opt-in Gemini accessible-screen actions; Android Accessibility permission required |
 | Floating assistant | Standard application window | Draggable face/status bar, explicit Android overlay permission |
 | Pointer control, external-session monitoring, voice dictation | Not implemented in this preview | Not implemented |
 | Reply speech | macOS system voice; Linux `espeak-ng` | Installed Android TTS engine |
@@ -35,6 +36,8 @@ Desktop packaging first downloads the checksum-pinned official Codex CLI and its
 Android generation runs `tauri android init`, then `scripts/configure-android.mjs` adds the Keystore/TTS implementation and configures release signing from private CI environment variables. Generated SDK, Gradle, keystore and binary files are ignored. This is direct APK distribution, not a Play Store listing.
 
 On Android, Settings provides **Allow floating bar**, **Show floating bar**, and **Hide floating bar**. The bar is a user-started foreground service with a persistent stop notification. Drag its face to reposition it; tap to expand status and Open Karbs/Hide controls. The overlay permission grants no access to other apps' files or controls. It does not start on boot or record the screen.
+
+**Phone Assist** is separate and off by default. Enable Karbs Phone Assist in Android Accessibility settings, then enable it in Karbs. During a task you send, Gemini can inspect visible accessible screen text, click nodes, enter text in ordinary fields, swipe, navigate, list launchable apps, and open apps or web URLs. Screen text is sent to your Gemini API account only as a task tool result; it is not monitored in the background. Password nodes are excluded. The service is disarmed when the task finishes or stops; the floating bar's **Stop phone actions** disarms it immediately. Android can withhold protected screens and private app data. This is not unrestricted device ownership or root access.
 
 macOS builds use ad-hoc signing. They are not Apple-notarized; normal Gatekeeper checks still apply. Linux packages target Ubuntu 22.04 or newer x64 with GTK/WebKit dependencies. Android targets Android 7 or newer, arm64 and x86_64, with NDK 28 for 16 KB page compatibility. Physical-device provider and voice testing is still required before claiming full feature parity.
 

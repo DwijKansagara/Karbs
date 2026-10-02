@@ -45,7 +45,7 @@ class KarbsOverlayService : Service() {
             background = GradientDrawable().apply { setColor(Color.rgb(18, 28, 22)); cornerRadius = dp(10).toFloat(); setStroke(dp(1), Color.rgb(76, 112, 89)) }
             elevation = dp(8).toFloat(); setPadding(dp(4), dp(4), dp(8), dp(4))
         }
-        face = Face(); bar.addView(face, LinearLayout.LayoutParams(dp(58), dp(58)))
+        face = Face().apply { contentDescription = "Floating Karbs"; isClickable = true }; bar.addView(face, LinearLayout.LayoutParams(dp(58), dp(58)))
         panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         label = TextView(this).apply { text = "Karbs · Ready"; setTextColor(Color.rgb(222, 241, 228)); textSize = 12f; maxWidth = dp(190); maxLines = 3 }
         panel.addView(label)
@@ -53,6 +53,7 @@ class KarbsOverlayService : Service() {
         fun button(title: String, click: () -> Unit) = Button(this).apply { text = title; textSize = 11f; minimumHeight = 0; minHeight = 0; setOnClickListener { click() } }
         buttons.addView(button("Open Karbs") { startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) })
         buttons.addView(button("Hide") { stopSelf() }); panel.addView(buttons); bar.addView(panel)
+        panel.addView(button("Stop phone actions") { KarbsAccessibilityService.instance?.taskActive = false; updateStatus("Phone actions stopped", false) })
         var rawX = 0f; var rawY = 0f; var startX = 0; var startY = 0; var dragged = false
         face.setOnTouchListener { _, event ->
             when (event.actionMasked) {

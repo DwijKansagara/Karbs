@@ -10,8 +10,8 @@ use tokio::io::{AsyncBufReadExt,BufReader};
 
 #[derive(Clone,Serialize,Deserialize)]
 #[serde(rename_all="camelCase",default)]
-pub struct Preferences{provider:String,gemini_model:String,codex_model:String,full_access:bool,speak_replies:bool}
-impl Default for Preferences{fn default()->Self{Self{provider:"gemini".into(),gemini_model:"gemini-2.5-flash".into(),codex_model:String::new(),full_access:false,speak_replies:false}}}
+pub struct Preferences{provider:String,gemini_model:String,codex_model:String,full_access:bool,phone_access:bool,speak_replies:bool}
+impl Default for Preferences{fn default()->Self{Self{provider:"gemini".into(),gemini_model:"gemini-2.5-flash".into(),codex_model:String::new(),full_access:false,phone_access:false,speak_replies:false}}}
 pub struct Shared{preferences:Mutex<Preferences>,conversation:tokio::sync::Mutex<Conversation>,cancel:tokio::sync::Notify,key:Mutex<String>,login:AtomicBool,speech:Mutex<Option<std::process::Child>>,data:PathBuf}
 fn data(app:&AppHandle)->Result<PathBuf,String>{std::env::var_os("KARBS_PORT_DATA").map(PathBuf::from).map(Ok).unwrap_or_else(||app.path().app_data_dir().map_err(|_|"Cannot locate app storage.".into()))}
 fn codex_path(app:&AppHandle)->Result<PathBuf,String>{
@@ -26,10 +26,11 @@ async fn boot(app:AppHandle,shared:State<'_,Shared>)->Result<Value,String>{
     Ok(json!({"preferences":shared.preferences.lock().map_err(|_|"Settings unavailable.")?.clone(),"platform":std::env::consts::OS,"version":env!("CARGO_PKG_VERSION"),"keyPresent":!shared.key.lock().map_err(|_|"Key state unavailable.")?.is_empty(),"keyError":key_error,"capabilities":{"codex":karbs_port_core::desktop(),"fullAccess":karbs_port_core::desktop(),"gemini":true,"attachments":true,"systemSpeech":cfg!(any(target_os="macos",target_os="linux",target_os="android")),"pointerControl":false,"voiceInput":false}}))
 }
 #[tauri::command]
-fn save_preferences(shared:State<Shared>,mut preferences:Preferences)->Result<(),String>{
+fn save_preferences(app:AppHandle,shared:State<Shared>,mut preferences:Preferences)->Result<(),String>{
     if !["gemini","codex"].contains(&preferences.provider.as_str()){return Err("Unknown provider.".into());}
     karbs_port_core::validate_model(&preferences.gemini_model)?;
     if !karbs_port_core::desktop(){preferences.provider="gemini".into();preferences.full_access=false;}
+    if preferences.phone_access { if !cfg!(target_os="android"){return Err("Phone Assist requires Android.".into());}if platform::phone(&app,"phoneStatus",json!({}))?["enabled"]!=true{return Err("Enable Karbs Phone Assist in Android Accessibility settings first.".into());} }
     let text=serde_json::to_vec_pretty(&preferences).map_err(|_|"Cannot encode preferences.")?;
     let path=shared.data.join("preferences.json");let temp=shared.data.join("preferences.next.json");
     std::fs::write(&temp,text).map_err(|_|"Cannot save preferences.")?;
@@ -51,11 +52,15 @@ async fn list_models(shared:State<'_,Shared>)->Result<Vec<String>,String>{let ke
 async fn chat_send(app:AppHandle,shared:State<'_,Shared>,turn:Turn)->Result<String,String>{
     karbs_port_core::validate_turn(&turn)?;
     if turn.full_access&&!shared.preferences.lock().map_err(|_|"Settings unavailable.")?.full_access{return Err("Enable Full access in Settings before sending this task.".into());}
+    if turn.phone_access&&!shared.preferences.lock().map_err(|_|"Settings unavailable.")?.phone_access{return Err("Enable Phone Assist in Settings before sending this task.".into());}
     let mut chat=shared.conversation.try_lock().map_err(|_|"A task is already running.")?;
     let cancelled=shared.cancel.notified();tokio::pin!(cancelled);cancelled.as_mut().enable();
     let history=if chat.provider==turn.provider{chat.messages.clone()}else{Vec::new()};
     let emit=|message:String|{let _=app.emit("activity",message);};
-    let task=async{if turn.provider=="gemini"{let key=shared.key.lock().map_err(|_|"Key state unavailable.")?.clone();karbs_port_core::gemini(&turn,&history,&key,&shared.data.join("workspace"),&emit).await}else{karbs_port_core::codex(&turn,&history,&codex_path(&app)?,&shared.data.join("workspace"),&emit).await}};
+    struct PhoneGuard(Option<AppHandle>);impl Drop for PhoneGuard{fn drop(&mut self){if let Some(app)=&self.0{let _=platform::phone(app,"phoneTask",json!({"active":false}));}}}
+    let _phone_guard=if turn.phone_access{platform::phone(&app,"phoneTask",json!({"active":true}))?;PhoneGuard(Some(app.clone()))}else{PhoneGuard(None)};
+    let phone_app=app.clone();let phone_executor:Box<karbs_port_core::PhoneExecutor>=Box::new(move|args:Value|{let app=phone_app.clone();Box::pin(async move{let action=args["action"].as_str().ok_or("Missing phone action.")?.to_owned();let args=serde_json::to_string(&args).map_err(|_|"Invalid phone arguments.")?;let result=tauri::async_runtime::spawn_blocking(move||platform::phone(&app,"phoneAction",json!({"action":action,"args":args}))).await.map_err(|_|"Phone service interrupted.")??;tokio::time::sleep(std::time::Duration::from_millis(600)).await;serde_json::to_string(&result).map_err(|_|"Invalid phone result.".into())})});
+    let task=async{if turn.provider=="gemini"{let key=shared.key.lock().map_err(|_|"Key state unavailable.")?.clone();karbs_port_core::gemini(&turn,&history,&key,&shared.data.join("workspace"),&emit,if turn.phone_access{Some(phone_executor.as_ref())}else{None}).await}else{karbs_port_core::codex(&turn,&history,&codex_path(&app)?,&shared.data.join("workspace"),&emit).await}};
     let reply=tokio::select!{result=task=>result,_=cancelled=>Err("Task stopped. Actions already completed remain in effect.".into())};
     let (text,messages)=reply?;chat.provider=turn.provider;chat.messages=messages;Ok(text)
 }
@@ -65,6 +70,8 @@ async fn reset_chat(shared:State<'_,Shared>)->Result<(),String>{let mut chat=sha
 fn stop_task(shared:State<Shared>){shared.cancel.notify_waiters();}
 #[tauri::command]
 async fn floating_bar(app:AppHandle,action:String,text:Option<String>,working:Option<bool>)->Result<Value,String>{platform::overlay(&app,&action,text.as_deref().unwrap_or("Karbs · Ready"),working.unwrap_or(false))}
+#[tauri::command]
+async fn phone_setup(app:AppHandle,action:String)->Result<Value,String>{match action.as_str(){"permission"=>platform::phone(&app,"phonePermission",json!({})),"status"=>platform::phone(&app,"phoneStatus",json!({})),_=>Err("Unknown phone setup action.".into())}}
 struct LoginGuard<'a>(&'a AtomicBool);
 impl Drop for LoginGuard<'_>{fn drop(&mut self){self.0.store(false,Ordering::Release);}}
 #[tauri::command]
@@ -96,5 +103,5 @@ pub fn run(){
         let mut preferences=std::fs::read(dir.join("preferences.json")).ok().and_then(|b|serde_json::from_slice::<Preferences>(&b).ok()).unwrap_or_default();
         if !karbs_port_core::desktop(){preferences.full_access=false;preferences.provider="gemini".into();}
         app.manage(Shared{preferences:Mutex::new(preferences),conversation:tokio::sync::Mutex::new(Conversation::default()),cancel:tokio::sync::Notify::new(),key:Mutex::new(String::new()),login:AtomicBool::new(false),speech:Mutex::new(None),data:dir});updates::start(app.handle().clone());Ok(())
-    }).invoke_handler(tauri::generate_handler![boot,save_preferences,set_gemini_key,use_session_key,attachment_name,list_models,chat_send,reset_chat,stop_task,floating_bar,login_codex,open_provider,speak,stop_speech,updates::check_update,updates::install_update]).run(tauri::generate_context!()).expect("Unable to start Karbs");
+    }).invoke_handler(tauri::generate_handler![boot,save_preferences,set_gemini_key,use_session_key,attachment_name,list_models,chat_send,reset_chat,stop_task,floating_bar,phone_setup,login_codex,open_provider,speak,stop_speech,updates::check_update,updates::install_update]).run(tauri::generate_context!()).expect("Unable to start Karbs");
 }

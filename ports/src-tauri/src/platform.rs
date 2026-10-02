@@ -45,4 +45,8 @@ pub fn overlay(app:&AppHandle,action:&str,text:&str,working:bool)->Result<serde_
     #[cfg(target_os="android")]{let command=match action{"status"=>"overlayStatus","permission"=>"overlayPermission","show"=>"showOverlay","hide"=>"hideOverlay","update"=>"updateOverlay",_=>return Err("Unknown floating-bar action.".into())};mobile(app,command,json!({"text":text,"working":working}))}
     #[cfg(not(target_os="android"))]{let _=(app,action,text,working);Err("This floating bar is available on Android.".into())}
 }
+pub fn phone(app:&AppHandle,command:&str,args:serde_json::Value)->Result<serde_json::Value,String>{
+    #[cfg(target_os="android")]{mobile(app,command,args)}
+    #[cfg(not(target_os="android"))]{let _=(app,command,args);Err("Phone Assist requires Android.".into())}
+}
 

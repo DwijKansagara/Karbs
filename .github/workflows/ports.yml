@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: karbs-ports-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   desktop:
     strategy:

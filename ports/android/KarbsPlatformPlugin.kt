@@ -24,13 +24,41 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import java.util.Locale
+import org.json.JSONObject
 
 @Keep @InvokeArg class KeyArgs { var value: String = "" }
 @Keep @InvokeArg class SpeechArgs { var text: String = "" }
 @Keep @InvokeArg class FileArgs { var path: String = "" }
 @Keep @InvokeArg class OverlayArgs { var text: String = "Karbs · Ready"; var working: Boolean = false }
+@Keep @InvokeArg class PhoneArgs { var action: String = ""; var args: String = "{}"; var active: Boolean = false }
 @Keep @TauriPlugin
 class KarbsPlatformPlugin(private val activity: Activity): Plugin(activity) {
+    @Command fun phoneStatus(invoke: Invoke) { val result = JSObject(); result.put("enabled", KarbsAccessibilityService.instance != null); invoke.resolve(result) }
+    @Command fun phonePermission(invoke: Invoke) { activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); invoke.resolve(JSObject()) }
+    @Command fun phoneTask(invoke: Invoke) {
+        val active = invoke.parseArgs(PhoneArgs::class.java).active
+        activity.runOnUiThread { val service = KarbsAccessibilityService.instance; if (active && service == null) invoke.reject("Enable Karbs Phone Assist in Android Accessibility settings first.") else { service?.taskActive = active; invoke.resolve(JSObject()) } }
+    }
+    @Command fun phoneAction(invoke: Invoke) {
+        val request = invoke.parseArgs(PhoneArgs::class.java)
+        activity.runOnUiThread { try {
+            val service = KarbsAccessibilityService.instance ?: error("Phone Assist is not enabled.")
+            check(service.taskActive) { "Phone control is not enabled for an active task." }
+            val args = JSONObject(request.args)
+            fun finish(ok: Boolean) { val result = JSObject(); result.put("ok", ok); invoke.resolve(result) }
+            when(request.action) {
+                "inspect_screen" -> { val result = JSObject(); result.put("screen", service.inspect()); invoke.resolve(result) }
+                "click_node" -> finish(service.nodeAction(args.getInt("id"), null))
+                "type_text" -> finish(service.nodeAction(args.getInt("id"), args.getString("text")))
+                "navigate" -> finish(service.navigate(args.getString("direction")))
+                "swipe" -> service.swipe(args.getString("direction")) { finish(it) }
+                "open_url" -> { val uri = Uri.parse(args.getString("url")); require(uri.scheme in listOf("https","http") && !uri.host.isNullOrEmpty()); activity.startActivity(Intent(Intent.ACTION_VIEW, uri)); finish(true) }
+                "list_apps" -> { val apps = org.json.JSONArray(); val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER); activity.packageManager.queryIntentActivities(intent, 0).take(150).forEach { apps.put(JSONObject().put("name", it.loadLabel(activity.packageManager).toString()).put("package", it.activityInfo.packageName)) }; val result = JSObject(); result.put("apps", apps); invoke.resolve(result) }
+                "open_app" -> { val launch = activity.packageManager.getLaunchIntentForPackage(args.getString("package")) ?: error("This app has no launchable activity."); activity.startActivity(launch); finish(true) }
+                else -> error("Unknown phone action.")
+            }
+        } catch (e: Exception) { invoke.reject(e.message ?: "Phone action failed.") } }
+    }
     @Command fun overlayStatus(invoke: Invoke) { val result = JSObject(); result.put("allowed", Settings.canDrawOverlays(activity)); result.put("running", KarbsOverlayService.instance != null); invoke.resolve(result) }
     @Command fun overlayPermission(invoke: Invoke) { activity.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + activity.packageName))); invoke.resolve(JSObject()) }
     @Command fun showOverlay(invoke: Invoke) {

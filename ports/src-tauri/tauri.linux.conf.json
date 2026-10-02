@@ -1,0 +1,22 @@
+{
+  "bundle": {
+    "targets": [
+      "deb",
+      "appimage"
+    ],
+    "resources": {
+      "../resources/codex/": "codex/"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libsecret-1-0",
+          "espeak-ng"
+        ]
+      }
+    },
+    "createUpdaterArtifacts": true
+  }
+}

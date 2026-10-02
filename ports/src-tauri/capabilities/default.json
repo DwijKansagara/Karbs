@@ -1,0 +1,1 @@
+{"identifier":"default","description":"Karbs chat window and user-selected attachment reading","windows":["main"],"permissions":["core:default","dialog:allow-open","fs:allow-read-file"]}

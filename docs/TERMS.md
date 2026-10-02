@@ -1,6 +1,6 @@
 # Terms and conditions
 
-Effective: 2 October 2026
+Effective: 2 OCTOBER 2026
 
 The conditions for using the Karbs application and website.
 
@@ -20,9 +20,13 @@ Use Karbs only on devices, accounts, files and services you own or are authorize
 
 Reviewed access requests approval for desktop changes. Full access allows requested actions without individual Karbs tool prompts. Those actions may alter or delete accessible files, launch applications and execute commands. Choose the access level appropriate to the task and keep backups of important work. Karbs cannot promise that an AI-generated action will be correct.
 
+## Android Phone Assist
+
+Phone Assist is an optional, task-scoped accessibility feature. You must enable its Android service and Karbs setting yourself. It may click controls, enter text, swipe and open apps while completing a task you send. Use Stop phone actions on the floating bar or disable the service to revoke it. Screen text used by a task is sent to your Gemini API account. This does not grant root access, private app files or a way to bypass protected screens. Previews require further device and provider testing and do not have identical capabilities across platforms.
+
 ## Platform availability and updates
 
-Only platforms with a published supported installer are available for installation. The initial implementation targets Windows x64. Source commits do not automatically update installed applications. Updates are versioned releases verified with the application’s updater signature and may restart Karbs. Features, model availability and compatibility can change.
+Only platforms with a published supported installer are available for installation. Windows x64 is the stable release. macOS, Linux and Android downloads are labeled previews when their builds are published. macOS preview builds are not Apple-notarized. Android APK installation requires OS approval and is separate from the desktop signed-update channel. Source commits do not automatically update installed applications. Updates are versioned releases verified with the application’s updater signature and may restart Karbs. Features, model availability and compatibility can change.
 
 ## Open-source license and independence
 

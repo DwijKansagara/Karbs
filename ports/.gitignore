@@ -1,0 +1,5 @@
+dist/
+src-tauri/gen/
+resources/codex/
+*.jks
+keystore.properties

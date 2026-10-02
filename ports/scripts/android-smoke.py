@@ -25,6 +25,7 @@ adb('shell','input','keyevent','4');tap(text('Save key securely'));text('Key sav
 adb('shell','am','force-stop',PACKAGE);adb('shell','am','start','-n',PACKAGE+'/.MainActivity')
 tap(text('Settings'));text('Gemini key connected');tap(text('Remove key'));text('No Gemini key saved')
 adb('shell','appops','set',PACKAGE,'SYSTEM_ALERT_WINDOW','allow')
+adb('shell','pm','grant',PACKAGE,'android.permission.POST_NOTIFICATIONS')
 for _ in range(4):adb('shell','input','swipe','300','300','300','700','200')
 tap(text('Show floating bar'));adb('shell','input','keyevent','3')
 tap(text('Floating Karbs'));text('Open Karbs');text('Stop phone actions')

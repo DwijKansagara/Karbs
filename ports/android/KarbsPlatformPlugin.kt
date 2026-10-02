@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -63,7 +65,10 @@ class KarbsPlatformPlugin(private val activity: Activity): Plugin(activity) {
     @Command fun overlayPermission(invoke: Invoke) { activity.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + activity.packageName))); invoke.resolve(JSObject()) }
     @Command fun showOverlay(invoke: Invoke) {
         if (!Settings.canDrawOverlays(activity)) { invoke.reject("Allow Display over other apps in Android settings first."); return }
-        activity.runOnUiThread { try { val intent = Intent(activity, KarbsOverlayService::class.java); if (Build.VERSION.SDK_INT >= 26) activity.startForegroundService(intent) else activity.startService(intent); invoke.resolve(JSObject()) } catch (_: Exception) { invoke.reject("Android could not start the floating bar. Reopen Karbs and try again.") } }
+        activity.runOnUiThread { try {
+            if (Build.VERSION.SDK_INT >= 33 && activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) activity.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7300)
+            val intent = Intent(activity, KarbsOverlayService::class.java); if (Build.VERSION.SDK_INT >= 26) activity.startForegroundService(intent) else activity.startService(intent); invoke.resolve(JSObject())
+        } catch (_: Exception) { invoke.reject("Android could not start the floating bar. Reopen Karbs and try again.") } }
     }
     @Command fun hideOverlay(invoke: Invoke) { activity.stopService(Intent(activity, KarbsOverlayService::class.java)); invoke.resolve(JSObject()) }
     @Command fun updateOverlay(invoke: Invoke) { val args = invoke.parseArgs(OverlayArgs::class.java); activity.runOnUiThread { KarbsOverlayService.instance?.updateStatus(args.text, args.working); invoke.resolve(JSObject()) } }

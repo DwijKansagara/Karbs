@@ -1,6 +1,6 @@
 import{readFileSync,writeFileSync,mkdirSync,copyFileSync}from'node:fs';import{dirname,resolve}from'node:path';
 const root=resolve('src-tauri/gen/android');const path=root+'/app/build.gradle.kts';let gradle=readFileSync(path,'utf8');
-gradle='import java.util.Properties\n'+gradle;
+if(!/^import java\.util\.Properties\s*$/m.test(gradle))gradle='import java.util.Properties\n'+gradle;
 const block=`signingConfigs { create("karbsRelease") { val props = Properties().apply { rootProject.file("keystore.properties").inputStream().use { load(it) } }; keyAlias = props.getProperty("keyAlias"); keyPassword = props.getProperty("password"); storePassword = props.getProperty("password"); storeFile = file(props.getProperty("storeFile")) } }\n    `;
 if(!gradle.includes('buildTypes {')||!gradle.includes('getByName("release") {'))throw new Error('Android Gradle template changed; refusing an unsigned build.');
 gradle=gradle.replace('buildTypes {',block+'buildTypes {').replace('getByName("release") {','getByName("release") {\n            signingConfig = signingConfigs.getByName("karbsRelease")');writeFileSync(path,gradle);
